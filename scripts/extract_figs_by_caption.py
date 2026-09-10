@@ -1,15 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-按论文图注（Fig. N）定位并裁剪图片，生成 assets/figN.png。
-用法：
+extract_figs_by_caption.py — 按论文图注（Fig. N）定位并裁剪图片，生成 assets/figN.png。
+
+用途:
+    为译文准备插图。一张图的内容由它的图注定义，与 PDF 内嵌对象顺序无关，
+    因此本脚本以图注为锚点反向裁剪图注上方区域，避免图片与图号错位。
+
+用法:
   python extract_figs_by_caption.py paper.pdf --list                  # 只列出图注（页/栏/y/文本）
   python extract_figs_by_caption.py paper.pdf -o out_dir              # 自动裁剪全部图 -> out_dir/figN.png
   python extract_figs_by_caption.py paper.pdf -o out_dir --dpi 300 --col-x 300 --pad 20
-原理（关键）：
+
+原理（关键）:
   - 每张图 = 同栏内"上一条图注底部 → 本条图注顶部"区间里的全部图像块；
   - 若区间内无图像块（矢量图），裁剪整个区间区域；
   - 自动裁剪后必须逐张用 Read 目视核对（内容与图注语义一致、无裁切），
     不合适时用 --crop/手工 fitz 微调重裁。
+
+依赖: PyMuPDF (fitz) —— python -m pip install pymupdf
 """
 import argparse
 import os

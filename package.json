@@ -1,0 +1,17 @@
+{
+  "name": "pdf-translate-review",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent skill and toolkit: translate academic PDF papers into Chinese, verify them, and build self-contained offline HTML.",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "render": "node scripts/md_to_offline_html.js",
+    "verify": "node scripts/verify_katex_md.js"
+  },
+  "dependencies": {
+    "katex": "^0.18.1",
+    "markdown-it": "^15.0.0",
+    "markdown-it-texmath": "^1.0.0"
+  }
+}

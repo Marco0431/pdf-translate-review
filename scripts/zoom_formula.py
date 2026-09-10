@@ -3,11 +3,15 @@
 """
 zoom_formula.py — 公式核对辅助工具：提取公式行坐标 + 高清裁剪渲染。
 
+用途:
+    把 PDF 的某个局部区域渲染成 800–1600 DPI 的高清图，用于逐字符确认括号范围、
+    上下标、乘号作用范围；--list 模式先给出含关键符号的文本行与坐标，便于定位裁剪区。
+
 文本层提取的公式常丢括号/下标，必须用渲染图逐字确认。本工具提供:
 
 用法:
     # 1) 列出某页含关键符号的文本行及其坐标（判断公式结构）
-    python zoom_formula.py paper.pdf --page 4 --list --kw "Emult" "eta" "rrob"
+    python zoom_formula.py paper.pdf --page 4 --list --kw "eta" "J" "D"
 
     # 2) 按页面比例裁剪并高清渲染（肉眼核对括号/上下标）
     python zoom_formula.py paper.pdf --page 4 --crop 0.02,0.30,0.55,0.35 --dpi 1200 --out eq12.png
