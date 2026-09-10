@@ -31,8 +31,11 @@ except Exception:
 
 
 def check_eq_numbers(c: str, max_eq: int) -> list:
+    # 支持三种编号写法: \tag{1a}（字母子式）、\text{(28a)}（cases 内编号）、\tag{28}
     nums = set()
-    for m in re.finditer(r"\\tag\{(\d+)\}", c):
+    for m in re.finditer(r"\\tag\{(\d+)[a-z]?\}", c):
+        nums.add(int(m.group(1)))
+    for m in re.finditer(r"\\text\{\((\d+)[a-z]?\)\}", c):
         nums.add(int(m.group(1)))
     missing = [n for n in range(1, max_eq + 1) if n not in nums]
     extra = sorted(nums - set(range(1, max_eq + 1)))
@@ -86,6 +89,26 @@ def check_images(c: str, assets_dir: str, expect: int) -> list:
     return out
 
 
+def check_brackets(c: str) -> list:
+    """[8] 括号配对（块级，防 rightarrow 误报）+ [9] 已知歧义模式。"""
+    out = []
+    blocks = re.findall(r"\$\$(.+?)\$\$", c, re.S)
+    for bi, b in enumerate(blocks):
+        left = len(re.findall(r"\\left(?!arrow)", b))
+        right = len(re.findall(r"\\right(?!arrow)", b))
+        if left != right and (left > 0 or right > 0):
+            out.append(f"[8] 公式块{bi}: \\left {left} vs \\right {right} :: {b[:80]}")
+        for env in re.findall(r"\\begin\{(\w+)\}", b):
+            if b.count(f"\\begin{{{env}}}") != b.count(f"\\end{{{env}}}"):
+                out.append(f"[8] 公式块{bi}: 环境 {env} 不配对")
+        # [9] 已知歧义：(I - X) 后紧跟 (e_... - ...) 整体被括入
+        for m in re.finditer(r"\\left\(I - [^)]+\)\\left\([^)]*\\text\{\s*(?:trac|cop)\}", b):
+            seg = m.group(0)
+            if "e_\\text{trac},i} - \\eta" in seg or "e_{\\text{trac},i} - \\eta" in seg:
+                out.append(f"[9] 公式块{bi}: 疑似括号范围歧义 (I-X)(b-c) :: {seg[:70]}")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("md", help="翻译文档路径")
@@ -106,6 +129,7 @@ def main():
     if args.max_eq:
         issues += check_eq_numbers(c, args.max_eq)
     issues += check_math_delimiters(c)
+    issues += check_brackets(c)  # [8] 括号配对 + [9] 歧义模式
     if args.section:
         issues += check_sections(c, args.section)
     if args.assets_dir or args.expect_imgs:
