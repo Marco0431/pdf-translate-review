@@ -5,7 +5,7 @@ check_source_leaks.py — 交付件源码级复查：把"读者实际会看到�
 解决的问题：译文正文正确、公式也重建了，但交付的 HTML 里仍有一批**读者可见的源代码**，
 或渲染器根本没接手的公式。这类问题在 Markdown 阶段查不出来，必须查最终 HTML。
 
-检查项（任一不为零即报错）：
+检查项（任一不为零即**不合格**）：
   1. leftover_delim      该页自己配置的定界符没配成对（`$`、`\\(`、`\\[` 等）
   2. latex_in_prose      非数学文本里残留的 LaTeX 命令 / 转义符号（`\\frac`、`\\|`）
   3. doubled_backslash   **双反斜杠**：`\\\\bar`、`\\\\|`、`\\\\mathrm` 这类把单个反斜杠
@@ -15,11 +15,27 @@ check_source_leaks.py — 交付件源码级复查：把"读者实际会看到�
                          文本节点内**匹配定界符，跨元素永远匹配不到
   6. span_malformed      数学 span 的花括号/圆括号/方括号不配对，或 `\\left` 没有 `\\right`
                          ——它不可能是完整公式，说明被截断了
-  7. md_residue          可见文本里的 Markdown 残留：`**粗体**`、`_斜体_`、段首 `> `
-  8. katex_errors        KaTeX 解析失败回退块（`class="katex-error"`，读者看到红色源码）
-  9. dup_image_bytes     同一张图被两个不同标签引用（图注错位；组合图没拆）
- 10. external_refs       外链 script/link/url(http)（自包含被破坏）
- 11. broken_images       图片解码失败或非 data: 内嵌
+  7. md_emphasis         正文里残留的 Markdown 斜体记号 `_…_`（见下方"误报分析"）
+  8. md_strike           正文里残留的 Markdown 删除线记号 `~~…~~`
+  9. img_stray_gt        `<img …>>` —— 图片标签后面多出一个 `>`，读者会看到一个多余的
+                         尖括号（无头浏览器确认它是正文文本节点）
+ 10. caption_order       图注编号在文档顺序里不递增（如 图12 印在 图11 前面）
+ 11. caption_dup         同一个图注编号出现两次
+ 12. leaked_paths        正文里出现内部工作路径（`_extracted…`、`assets/raw`、`G:\\`、
+                         `/mnt/`、`_work\\`、`_fixwork`、`_bak_fix`）
+ 13. md_residue          可见文本里的 Markdown 残留：`**粗体**`、`_斜体_`、段首 `> `
+ 14. katex_errors        KaTeX 解析失败回退块（`class="katex-error"`，读者看到红色源码）
+ 15. dup_image_bytes     同一张图被两个不同标签引用（图注错位；组合图没拆）
+ 16. external_refs       外链 script/link/url(http)（自包含被破坏）
+ 17. broken_images       图片解码失败或非 data: 内嵌
+
+**报告项**（单独列出、不计入"不合格"，因为下述检出依赖启发式，需人工确认）：
+
+  R1. missing_figures    正文引用了 `图 N` 但整篇没有编号为 N 的图注（会列出号码）
+  R2. refs_missing       整篇没有 `参考文献` / `REFERENCES` 章节
+  R3. refs_placeholder   `参考文献` 标题后面只有译者占位说明、没有文献条目
+  R4. prose_underscores  正文里残留的下划线数量（含论文自身标识符的**孤立**下划线；
+                         只有 `_…_` 成对出现才计入 7）
 
 **最重要的两条设计原则**（都是踩过的坑）：
 
@@ -34,6 +50,18 @@ check_source_leaks.py — 交付件源码级复查：把"读者实际会看到�
 比对验证）。因此它能看见"标签把定界符切开""定界符没配成对"这两类跨节点问题——把可见文本
 简单拼接、或把 `$…$` 整段遮掉的写法都看不见。
 
+**下划线规则的误报分析（照实写下来，免得被当成"扫过没问题"）**：
+
+* 论文自身的标识符/文件名只有一个下划线、没有配对（`right_real`、`teleop_default`、
+  `Unitee_lerobot`、`github.com/user/repo_name`）——下划线两侧都是"词字符"，属**词内**下划线，
+  不算强调记号，只进 R4 计数。
+* 公式记法被写成纯文本时也会出现下划线（`h_global`、`α_min`、`x_ref`、`lim_(t→∞)`、`Σ_(n=1)^N`）。
+  这些同样是**词内**（`h_g`、`α_m`、`x_r`）或是**只闭合不开启**（`m_` 后面接 `(`），
+  因此都不算强调记号。要记住词字符包含希腊字母与数学字母，否则会把 `α_min` 误判成
+  `_min … α_` 这样一对假强调。
+* 反过来，中文正文里的 `_D_`、`_A. 数据集收集_`、`_NEO-Dataset_` 的下划线一侧是汉字/空格/标点，
+  属真正的强调记号残留——这才是本条要抓的东西。
+
 用法:
     python check_source_leaks.py out.html
     python check_source_leaks.py --dir out/            # 递归检查目录下所有 html
@@ -41,7 +69,7 @@ check_source_leaks.py — 交付件源码级复查：把"读者实际会看到�
     python check_source_leaks.py --no-dupe-scan out.html   # 跳过图片字节扫描（大文件提速）
     python check_source_leaks.py --selftest                # 跑内置回归样本后退出
 
-改过本脚本之后，除了跑真实交付件，还要跑 `--selftest`：它把这两类缺陷的最小样本与几个
+改过本脚本之后，除了跑真实交付件，还要跑 `--selftest`：它把各类缺陷的最小样本与若干
 合法写法各跑一遍（坏的必须报错、好的必须通过）。**若坏样本也报通过，说明新检查项没生效。**
 
 退出码: 0 = 全部通过；1 = 有文件不合格
@@ -100,7 +128,7 @@ class VisibleDoc(object):
                 输出），用来**切分**文本节点。
     """
 
-    def __init__(self, src):
+    def __init__(self, src, include_verbatim=False):
         self.src = src
         n = len(src)
         vis = bytearray([1]) * n
@@ -122,7 +150,7 @@ class VisibleDoc(object):
             if o and _is_open(seg, o):
                 name = o.group(1).lower()
                 blank_subtree = (
-                    name in VERBATIM
+                    (name in VERBATIM and not include_verbatim)
                     or (_class_of(seg, o).split() or [""])[0].startswith("katex"))
             if blank_subtree:
                 depth, j = 1, m.end()
@@ -368,6 +396,9 @@ def check_file(path, dupe_scan=True):
     doc = VisibleDoc(html)
     text = doc.masked
     delims = configured_delims(html)
+    mv = markup_view(html)
+    mv_nomath = markup_view(html, drop_math=True)
+    doc_verbatim = VisibleDoc(html, include_verbatim=True)
 
     res = {
         "file": path,
@@ -378,13 +409,27 @@ def check_file(path, dupe_scan=True):
         "prose_script": [],
         "delim_split_by_tag": [],
         "span_malformed": [],
+        "md_emphasis": [],
+        "md_strike": [],
+        "img_stray_gt": [],
+        "caption_order": [],
+        "caption_dup": [],
+        "leaked_paths": [],
+        "refs_missing": False,
+        "refs_placeholder": [],
         "math_spans": 0,
         "text_nodes": 0,
+        # 报告项（不计入 ok）
+        "missing_figures": [],
+        "prose_underscores": 0,
+        "captions": [],
+        "images_checked": 0,
     }
 
     nodes = doc.nodes()
     res["text_nodes"] = len(nodes)
     pieces_by_node = []
+    prose_pieces = []
     for k, (node, boundary) in enumerate(nodes):
         pieces = split_at_delimiters(node, delims)
         pieces_by_node.append(pieces)
@@ -400,6 +445,7 @@ def check_file(path, dupe_scan=True):
                         res["doubled_backslash"].append(
                             {"node": k, "cmd": m.group(0), "tex": data[:120]})
                 continue
+            prose_pieces.append((k, data))
             for left, _r, _disp in delims:
                 for m in re.finditer(re.escape(left), data):
                     res["leftover_delim"].append(
@@ -413,6 +459,13 @@ def check_file(path, dupe_scan=True):
                 res["prose_script"].append(
                     {"node": k, "boundary": boundary, "token": m.group(0),
                      "context": data[:160]})
+            for m in _STRIKE_RX.finditer(data):
+                res["md_strike"].append({"node": k, "mark": m.group(0),
+                                         "context": data[:160]})
+            for item in emphasis_pairs(data):
+                item["node"] = k
+                res["md_emphasis"].append(item)
+    res["prose_underscores"] = prose_underscore_count(prose_pieces)
     # 完全不渲染的页面（无 delimiters 配置）：双反斜杠也要查
     if res["math_spans"] == 0:
         spans = _env_spans(text)
@@ -474,9 +527,30 @@ def check_file(path, dupe_scan=True):
     res["dup_image_bytes"] = [{"sha": k[:12], "index_alt": v}
                               for k, v in by_sha.items()
                               if len(v) > 1 and len({a for _i, a in v}) > 1]
+    # ---- 非 LaTeX 类：Markdown 残留 / 图片旁尖括号 / 图注顺序 / 内部路径 / 参考文献
+    res["img_stray_gt"] = [{"at": a, "context": html[max(0, b - 34):b + 22]}
+                           for a, b in stray_gt_after_images(mv)]
+    figs = figure_findings(html, mv, mv_nomath, doc)
+    res["captions"] = figs["captions"]
+    res["images_checked"] = figs["n_imgs"]
+    res["caption_order"] = figs["caption_order"]
+    res["caption_dup"] = figs["caption_dup"]
+    res["missing_figures"] = figs["missing_figures"]
+    res["captions_detail"] = figs["captions_detail"]
+    res["leaked_paths"] = [{"at": m.start(), "match": m.group(0),
+                            "context": doc_verbatim.masked[max(0, m.start() - 50):
+                                                           m.start() + 60]}
+                           for m in _LEAK_PATH.finditer(doc_verbatim.masked)]
+    refs = reference_findings(doc)
+    res["refs_missing"] = refs["refs_missing"]
+    res["refs_placeholder"] = refs["refs_placeholder"]
+
     res["ok"] = not (res["leftover_delim"] or res["latex_in_prose"]
                      or res["doubled_backslash"] or res["prose_script"]
                      or res["delim_split_by_tag"] or res["span_malformed"]
+                     or res["md_emphasis"] or res["md_strike"]
+                     or res["img_stray_gt"] or res["caption_order"]
+                     or res["caption_dup"] or res["leaked_paths"]
                      or res["md_residue"] or res["katex_errors"]
                      or res["dup_image_bytes"] or res["external_refs"]
                      or res["non_embedded_images"] or res["broken_images"])
@@ -485,6 +559,201 @@ def check_file(path, dupe_scan=True):
 
 def _example(items, key, n=6):
     return [x[key] for x in items[:n]]
+
+
+# --------------------------------------------------------------------------- #
+# 新增规则：Markdown 残留 / 图片旁多余尖括号 / 图注顺序 / 内部路径 / 参考文献
+# --------------------------------------------------------------------------- #
+_BLOCK_RX = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.S | re.I)
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.S)
+_IMG_STRAY_GT = re.compile(r"<img\b[^>]*?>>")
+_PICTEXT = re.compile(
+    r"<!--\s*Start of picture text\s*-->.*?<!--\s*End of picture text\s*-->",
+    re.S | re.I)
+_ANY_COMMENT = re.compile(r"<!--.*?-->", re.S)
+_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+_FIG = re.compile(r"图\s*(\d+)")
+# 图注样式的出现：`图 N` 后面紧跟图注分隔符。用来把"图注写在图片不旁边"的图
+# 从 missing_figures 里剔除——这一项是启发式，宁可少报也不要误报。
+_FIG_CAPLIKE = re.compile(r"图\s*(\d+)\s*[：:．.、，]")
+# 再补一条：以 `图 N` 开头的一行（图注块几乎总在行首，可能前面还有构建工具留下的 `>`）。
+_FIG_LINE_START = re.compile(r"(?:^|\n)[ \t>]*图\s*(\d+)")
+# 词字符：ASCII 字母数字 + 希腊字母 + 数学字母数字 + 上下标字符。
+# 汉字**不**算词字符——中文正文里的 `_D_` 正是要抓的强调记号残留。
+_WORD = re.compile(r"[0-9A-Za-z\u0370-\u03ff\u1f00-\u1fff\u2070-\u209f"
+                   r"\U0001D400-\U0001D7FF]")
+_STRIKE_RX = re.compile(r"~~[^\n~]{1,60}~~")
+# 内部工作路径：构建/翻译流程的中间目录，不该出现在读者可见的正文里。
+_LEAK_PATH = re.compile(
+    r"_extracted[\w\-]*|assets/raw|assets\\raw|[A-Za-z]:\\|/mnt/|_work\\|_fixwork"
+    r"|_bak_fix|_extract\\|_translate\\")
+_REF_HEAD = re.compile(r"参考文献|REFERENCES|References")
+_REF_ENTRY = re.compile(r"\[\s*\d+\s*\]|\b(?:19|20)\d{2}\b|等[.．]|et al")
+_REF_PLACEHOLDER = re.compile(
+    r"保持原文|按原文保留|见下方原文|不作翻译|原文清单|此处省略|详见原文|原文见|未翻译|见原文")
+
+_EMPH_GAP = 60          # 成对下划线的最大间距（同一行内）
+_EMPH_INNER = 40        # 强调内容的最大长度（更长的多半是正文，不是强调）
+_FORMULA_CHARS = re.compile(r"[()\[\]{}=<>^" + chr(92) + r"|]")
+_CAP_PUNCT = re.compile(r"^\s*>*\s*图\s*(\d+)\s*[：:．.、,，\u3000]")
+_CAP_SPACE = re.compile(r"^\s*>*\s*图\s*(\d+)[ \t]+(\S.*)$")
+_CAP_SHORT = 40         # `图 N 空格…` 只有这么短才算图注（否则是正文引用）
+
+
+def markup_view(src, drop_math=False):
+    """
+    等长视图：script/style/注释内容抹平，其余字符保持原偏移。
+
+    ``drop_math=True`` 时把 KaTeX 渲染子树也抹平——图注里若嵌了公式，抹平前
+    会把 `<annotation>` 里的 TeX 源码和 `.katex-html` 的字形一起读出来，字数
+    被撑大，短图注会被误判成正文引用。
+    """
+    out = src
+    for rx in (_BLOCK_RX, _ANY_COMMENT):
+        buf = list(out)
+        for m in rx.finditer(out):
+            for i in range(m.start(), m.end()):
+                if buf[i] != "\n":
+                    buf[i] = " "
+        out = "".join(buf)
+    if not drop_math:
+        return out
+    buf = list(out)
+    dv = VisibleDoc(src, include_verbatim=True)
+    for i, ch in enumerate(dv.masked):
+        if ch == " " and src[i] != " ":
+            buf[i] = " "
+    return "".join(buf)
+
+
+def emphasis_pairs(text):
+    """
+    正文里形如 `_…_` 的 Markdown 斜体残留。
+
+    两条判据，都是照着真实误报反推出来的（见模块开头的误报分析）：
+
+    1. **候选下划线**：不是"词内下划线"。词内 = 两侧都是标识符字符，标识符字符取
+       ASCII 字母数字 + 希腊/数学字母。`right_real`、`x_ref`、`α_min`、`h_global`
+       都属于词内，永不参与配对。汉字**不算**标识符字符——`_D_`、`_A. …_`
+       的开记号正是靠这一点成立。
+    2. **配对内容像强调而不是像公式**：两个候选下划线之间（同一行、间距 ≤ 60）的
+       文本，既不空、也不过长，且不含 `()[]{}=<>^\\|` 这些只在公式里成对出现的符号。
+       这条把 `lim_(t→∞) z_i(t) = z_i^d、lim_(t→∞)` 这种"两个只闭不开的记号
+       恰好靠近"排除掉——中间的 `(t→∞) z_i(t) = z_i^d、` 带括号和等号。
+    """
+    n = len(text)
+
+    def is_ident(ch):
+        return bool(ch) and bool(_WORD.match(ch))
+
+    runs = []
+    i = 0
+    while i < n:
+        if text[i] != "_":
+            i += 1
+            continue
+        j = i
+        while j < n and text[j] == "_":
+            j += 1
+        runs.append((i, j))
+        i = j
+    candidates = [a for a, b in runs
+                  if not (is_ident(text[a - 1] if a > 0 else "")
+                          and is_ident(text[b] if b < n else ""))]
+
+    def looks_like_emphasis(inner):
+        s = inner.strip()
+        if not s or len(s) > _EMPH_INNER:
+            return False
+        return not _FORMULA_CHARS.search(s)
+
+    out = []
+    for idx, a in enumerate(candidates):
+        for c in candidates[idx + 1:]:
+            if c - a > _EMPH_GAP or "\n" in text[a:c]:
+                break
+            inner = text[a + 1:c]
+            if not looks_like_emphasis(inner):
+                continue
+            out.append({"open": a, "close": c, "text": text[a:c + 1],
+                        "inner": inner.strip()[:60],
+                        "context": text[max(0, a - 30):c + 30]})
+            break
+    return out
+
+
+def stray_gt_after_images(mv):
+    """`<img …>>`：图片标签后面紧跟一个 `>`（会成为可见正文）。"""
+    return [(m.start(), m.end()) for m in _IMG_STRAY_GT.finditer(mv)]
+
+
+def _caption_of(mv, end, window=1400):
+    """
+    图片之后的图注。取**紧随图片的那一行**抹平后的文本，跳过构建工具留下的
+    “picture text” OCR 块与没有汉字的碎行；`图 N` 后接标点一律接受，接空格时
+    只有短文本才算图注（`图 2 拟人化双臂机器人的组成与坐标系` 是图注，
+    `图 5 给出所有运动混淆矩阵。尽管…` 是正文引用）。
+    """
+    seg = _PICTEXT.sub(" ", mv[end:end + window])
+    seg = _ANY_COMMENT.sub(" ", seg)
+    seg = _TAG.sub(" ", seg)
+    seg = seg.replace("&nbsp;", " ").replace("&quot;", '"')
+    seg = re.sub(r"[ \t]+", " ", seg)
+    for line in seg.split("\n"):
+        s = line.strip()
+        if not s:
+            continue
+        if not _CJK.search(s) and "图" not in s:
+            continue                       # OCR 碎行 / 多余的 `>`
+        m = _CAP_PUNCT.match(s)
+        if m:
+            return int(m.group(1)), s[:110]
+        m = _CAP_SPACE.match(s)
+        if m and len(m.group(2)) <= _CAP_SHORT:
+            return int(m.group(1)), s[:110]
+        return None, s[:70]                # 第一行有汉字却不是图注
+    return None, ""
+
+
+def figure_findings(src, mv, mv_nomath, doc):
+    """图注顺序 / 重复编号 / 正文引用却无图注。"""
+    caps = [(i, *_caption_of(mv_nomath, m.end()))
+            for i, m in enumerate(_IMG_TAG.finditer(mv))]
+    seq = [n for _i, n, _t in caps if n is not None]
+    refs = [int(m.group(1)) for m in _FIG.finditer(doc.masked)]
+    # 图注可能写在图片不旁边（如公式图、表格上方），这类号码从"缺图"里剔除
+    caplike = {int(m.group(1)) for m in _FIG_CAPLIKE.finditer(doc.masked)}
+    caplike |= {int(m.group(1)) for m in _FIG_LINE_START.finditer(doc.masked)}
+    return {
+        "n_imgs": len(caps),
+        "captions": seq,
+        "caption_order": [{"before": a, "after": b}
+                          for a, b in zip(seq, seq[1:]) if b < a],
+        "caption_dup": sorted({n for n in seq if seq.count(n) > 1}),
+        "missing_figures": sorted(set(refs) - set(seq) - caplike),
+        "captions_detail": [{"img": i, "fig": n, "text": t} for i, n, t in caps],
+    }
+
+
+def reference_findings(doc):
+    """参考文献章节是否存在 / 是否只有译者占位说明。"""
+    text = doc.masked
+    hits = list(_REF_HEAD.finditer(text))
+    if not hits:
+        return {"refs_missing": True, "refs_placeholder": []}
+    out = []
+    for m in hits:
+        after = text[m.end():m.end() + 3000]
+        head = after[:400]
+        if _REF_PLACEHOLDER.search(head) and not _REF_ENTRY.search(after):
+            out.append({"heading_at": m.start(),
+                        "note": head[:140].replace("\n", " ")})
+    return {"refs_missing": False, "refs_placeholder": out}
+
+
+def prose_underscore_count(pieces):
+    """正文里下划线的总数（含论文自身标识符里的孤立下划线）——仅作报告。"""
+    return sum(p.count("_") for _k, p in pieces)
 
 
 # --------------------------------------------------------------------------- #
@@ -521,6 +790,41 @@ SELFTEST = [
      + BS + "end{bmatrix}$</p>", False),
     ("<code> 里说明 LaTeX 命令（合法）",
      "<p>（LaTeX 的 <code>" + BS + "star</code>）</p>", False),
+    # ---- 非 LaTeX 类 -------------------------------------------------------
+    ("正文残留 _…_ 斜体（中文）",
+     "<p>本译文在_全局精修_阶段完成校对。</p>", True),
+    ("正文残留 _…_ 斜体（多词短语）",
+     "<p>我们的方法在 _ContactGraspNet + 配对_ 基线上有提升。</p>", True),
+    ("正文残留 _…_ 斜体（短词）",
+     "<p>训练集 _NEO-Dataset_ 含 20 个场景。</p>", True),
+    ("论文标识符里的孤立下划线（合法）",
+     "<p>初始位姿 right_real 与 teleop_default 都被评估；"
+     "代码见 github.com/user/repo_name。</p>", False),
+    ("公式记法里的下划线（合法）",
+     "<p>其中 0 &lt; α_min &lt; α_max，且 h_global = Σ_(n=1)^N α^(n) h^(n)、"
+     "lim_(t→∞) z_i(t) = z_i^d。</p>", False),
+    ("下划线只闭合不开启（合法）",
+     "<p>该式由 α_max 与 β_min 给出。</p>", False),
+    ("正文残留 ~~删除线~~",
+     "<p>分类为 right ~~r~~ eal 的样本。</p>", True),
+    ("图片后多出一个 >",
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">></p>'
+     "<p>图 1：示例</p>", True),
+    ("图片后没有多余 >（合法）",
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>'
+     "<p>图 1：示例</p>", False),
+    ("图注编号倒序",
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>'
+     "<p>图 2：第二幅</p>"
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>'
+     "<p>图 1：第一幅</p>", True),
+    ("图注编号递增（合法）",
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>'
+     "<p>图 1：第一幅</p>"
+     '<p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>'
+     "<p>图 2：第二幅</p>", False),
+    ("正文泄漏内部工作路径",
+     "<p>说明：插图存放于 <code>_extracted_jiao/assets/raw/</code>。</p>", True),
 ]
 
 
@@ -546,10 +850,19 @@ def selftest():
         bad += not ok
         fired = [k for k in ("leftover_delim", "latex_in_prose",
                              "doubled_backslash", "prose_script",
-                             "delim_split_by_tag", "span_malformed") if r[k]]
+                             "delim_split_by_tag", "span_malformed",
+                             "md_emphasis", "md_strike", "img_stray_gt",
+                             "caption_order", "caption_dup", "leaked_paths",
+                             "md_residue", "katex_errors", "dup_image_bytes",
+                             "external_refs", "non_embedded_images",
+                             "broken_images")
+                 if r[k]]
+        notes = [k for k in ("missing_figures", "refs_placeholder")
+                 if r[k]]        # 片段样本没有参考文献章节，refs_missing 不在此列出
         print(f"{'PASS' if ok else 'FAIL'}  {name:<40} "
               f"期望{'不合格' if want_fail else '通过'} "
-              f"实际{'不合格' if got else '通过'} {fired}")
+              f"实际{'不合格' if got else '通过'} {fired}"
+              + (f"  [报告项 {notes}]" if notes else ""))
     print(f"\n自检 {len(SELFTEST)} 项，{bad} 项不符合预期")
     return 1 if bad else 0
 
@@ -617,6 +930,34 @@ def main():
             print(f"     ! 不可能成形的数学 span {len(r['span_malformed'])} 处：")
             for x in r["span_malformed"][:3]:
                 print(f"       [{x['why']}] `{x['tex']}`")
+        if r["md_emphasis"]:
+            print(f"     ! 正文残留 Markdown 斜体记号 `_…_` "
+                  f"{len(r['md_emphasis'])} 处（正文下划线共 "
+                  f"{r['prose_underscores']} 个），例：")
+            for x in r["md_emphasis"][:4]:
+                print(f"       `{x['text'][:40]}` … {x['context'][:70]!r}")
+        if r["md_strike"]:
+            print(f"     ! 正文残留 Markdown 删除线 `~~…~~` "
+                  f"{len(r['md_strike'])} 处，例：")
+            for x in r["md_strike"][:4]:
+                print(f"       `{x['mark'][:40]}` … {x['context'][:70]!r}")
+        if r["img_stray_gt"]:
+            print(f"     ! 图片标签后多出 `>` {len(r['img_stray_gt'])} 处"
+                  f"（读者会看到多余的尖括号），例：")
+            for x in r["img_stray_gt"][:2]:
+                print(f"       …{x['context'][-46:]!r}")
+        if r["caption_order"]:
+            print(f"     ! 图注编号不递增 {len(r['caption_order'])} 处：")
+            for x in r["caption_order"][:4]:
+                print(f"       图 {x['before']} 之后出现 图 {x['after']}")
+            print(f"       文档顺序的图注编号：{r['captions']}")
+        if r["caption_dup"]:
+            print(f"     ! 图注编号重复：{r['caption_dup']}"
+                  f"（文档顺序：{r['captions']}）")
+        if r["leaked_paths"]:
+            print(f"     ! 正文泄漏内部工作路径 {len(r['leaked_paths'])} 处，例：")
+            for x in r["leaked_paths"][:4]:
+                print(f"       `{x['match']}` … {x['context'][:70]!r}")
         if r["md_residue"]:
             print(f"     ! Markdown 残留 {len(r['md_residue'])} 处，"
                   f"例：{r['md_residue'][:4]}")
@@ -630,6 +971,20 @@ def main():
             print(f"     ! 非内嵌图片：{r['non_embedded_images'][:3]}")
         if r["broken_images"]:
             print(f"     ! 图片解码失败 {r['broken_images']} 张")
+
+    # 报告项（不计入"不合格"）
+    for r in results:
+        notes = []
+        if r["missing_figures"]:
+            notes.append("正文引用了但没有图注的图号：" +
+                         ", ".join("图 %d" % n for n in r["missing_figures"]))
+        if r["refs_missing"]:
+            notes.append("整篇没有 参考文献 / REFERENCES 章节")
+        if r["refs_placeholder"]:
+            notes.append(f"参考文献标题下只有译者占位说明 "
+                         f"({len(r['refs_placeholder'])} 处)")
+        if notes:
+            print(f"     - {os.path.basename(r['file'])}：" + "；".join(notes))
 
     if args.json:
         json.dump(results, open(args.json, "w", encoding="utf-8"),
