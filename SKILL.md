@@ -22,6 +22,7 @@ description: >-
 3. **图片按图注配对**：图片必须按论文 `Fig.` 图注定位提取，内容与编号双重核对；不得按 PDF 内嵌对象顺序取图。
 4. **审查必做**：交付前逐字核对公式、翻译与图片，反复检查，不允许"看起来对"。
 5. **交付件不得露出源码**：最终 HTML 里读者能看到的只能有译文、公式排版与图片。原始 LaTeX（`\xi`、`\frac`、`\|`）、未渲染的定界符（`$`、`\(`）、Markdown 记号（`**粗体**`、`_斜体_`、段首 `>`）与 KaTeX 解析失败回退块都算**交付缺陷**，不是"渲染问题"。这类缺陷在 Markdown 阶段查不出来，必须对最终 HTML 逐项查（见 5.5）。
+6. **没有报错 ≠ 渲染正确**：渲染器"没报错"只说明它**接受了**这段 TeX，不说明它**渲染出的数学是对的**。KaTeX 对 `$\\|\bar{v}_L\\|$`（把 `$\|\bar{v}_L\|$` 的每个反斜杠都写成了两个）**不报任何错误**：它把 `\\` 当成换行、把 `|` 当成单竖线、把 `\\bar` 拆成字面量 `bar`，于是"手速度平均范数"在页面上变成单竖线加三个字母。**结论：公式核对必须目视比对渲染结果与原文**（见 5.1 第 4 条），不能以"渲染器没报错"结案。同理，**检查器的盲区不等于覆盖率**——把 `$…$` 整段遮掉再数源码、或把可见文本跨标签拼接后再匹配定界符的检查器，看不见这两类缺陷，它报"全部通过"时只能说明它没查这些（见 5.5）。
 
 ---
 
@@ -123,7 +124,14 @@ python scripts/extract_pdf.py paper.pdf --out out/
    - **多行共享编号**：多行矩阵 / 方程组共用一个编号时，确认共享关系与原文一致，不得拆成 `12a/12b`；反过来，**若原文自身就用子编号**（如 `(28a)`–`(28d)`、`(42a)/(42b)`、`(57a)`–`(57g)`），必须照抄，不要"合并"成 `(28)`。**编号只在共享块的末行出现一次**——每行都写 `\tag{N}` 会让读者看到同一个编号重复渲染（实战中出现过 4 组）；用 `\text{(28a)}` 表示子编号时，只靠 `\\tag\{(\d+)\}` 统计会漏计，必须同时扫 `\text{(…)}`；
    - **跨页公式组**：多式共用编号的公式组可能跨页（编号标注在末式），判定"原文没有此式"必须把**编号所在页与其前一页的两栏全部**渲染核对后才能下结论；
    - **不补写**：原文未给出的公式（如未显式写出的矩阵）不得补写；确有合理补充必须加 `> 注释：原文此处未给出…，此为译者补充。`。
-4. 发现错误后**同步修改三处**：译文正文、精读章节、HTML 内嵌公式源（`<annotation encoding="application/x-tex">`）——同一公式常在多处出现，必须一致。
+4. **渲染结果必须目视比对，不能只看有没有报错。** 至少要有一次"**把公式渲染出来、再和原文渲染图比**"的动作：用无头浏览器加载交付 HTML，把每条公式**渲染后的可见文本**打出来（跳过隐藏的 MathML 副本），与原文同一条公式逐字符比。**只看"KaTeX 错误数为 0"是不够的**——错的数学可以完全静默：
+
+   - **双反斜杠陷阱**（实战）`$\\|\bar{v}_L\\|$`：本意是 `$\|\bar{v}_L\|$`，每个反斜杠都多写了一个。KaTeX 不报错，但 `\\` 变成换行、`\\bar` 变成字面量 `bar`、`|` 变成单竖线，读者看到的是一个换了行的"单竖线 + bar + v_L + 单竖线"，而原文印的是双竖线范数 `∥v̄_L∥`。**修复要点**：这类字符串写进 HTML 时隔着 Shell / Python / JS 多层转义，任何一层多写一个 `\` 都会静默出错；改完必须**读回文件按字符打印**（`repr()`）确认，再渲染确认。
+   - **单竖线 vs 双竖线**：`|x|` 与 `\|x\|`（`\Vert`）渲染出的字符不同（单竖线 U+2223 vs 双竖线 U+2225）。核对范数时要比对**渲染出来的码位**，不能只看"有个竖线"。
+   - **判定方法**：无头浏览器加载页面后，把 `document.querySelectorAll('.katex')` 的可见文本（先移除 `.katex-mathml` 隐藏副本）导出成列表，与原文公式逐条比。实战就是这么发现"6 条公式、0 个错误、但 5 条数学是错的"。
+   - 附带的同类陷阱：**`\mathrm`、`\left`、`\frac`、`\bar` 等命令被多写一个反斜杠后，命令名会退化成字面量字母**（`x_{\mathrm{sym,th}}` → `xmathrmsym,th`）。这类"命令变字母"的信号同样只能在渲染结果里看到。
+
+发现错误后**同步修改三处**：译文正文、精读章节、HTML 内嵌公式源（`<annotation encoding="application/x-tex">`）——同一公式常在多处出现，必须一致。
 
 ### 5.2 图片-图注一致性核对（必做）
 
@@ -160,29 +168,49 @@ node scripts/verify_katex_md.js translation.md
 ### 5.5 HTML 交付件源码级复查（产出 ⑥-B 离线 HTML 时必跑）
 
 **为什么单列一步**：3～5.4 各步查的是译文内容，5.6 查的是渲染是否重叠。但交付的 HTML 里
-还可能出现"内容都对、读者却看到源代码"的情况，而且**在 Markdown 阶段完全查不出来**——
-Markdown 里 `$...$` 就是数学，转成 HTML 后能不能渲染取决于页面自己的定界符配置。实战中一次
-归档 27 份 HTML，有 12 份栽在这一类问题上，其中 7 份共 1110 处行内公式以源码形式显示。
+还可能出现"内容都对、读者却看到源代码"或"公式渲染了、但数学是错的"的情况，而且**在
+Markdown 阶段完全查不出来**——Markdown 里 `$...$` 就是数学，转成 HTML 后能不能渲染取决于
+页面自己的定界符配置。实战中一次归档 27 份 HTML，有 12 份栽在这一类问题上，其中 7 份共
+1110 处行内公式以源码形式显示；修完之后又漏掉两类：**双反斜杠把公式渲染成错的数学**
+（KaTeX 不报错，见核心原则 6）与**定界符被行内标签切开的公式碎片**。
 
 ```bash
 python scripts/check_source_leaks.py out.html
 python scripts/check_source_leaks.py --dir out/            # 递归
+python scripts/check_source_leaks.py --selftest            # 改过本脚本后必跑：坏样本必须报错、好样本必须通过
 ```
 
 逐项判死（任一不为零即不合格）：
 
-1. **可见原始 LaTeX**：读者能看到的文本里不该有 `\xi`、`\frac`、`\|` 这类命令。
-2. **可见残留 `$`**：公式没被渲染，或定界符配对失败。
-3. **可见 `\(` `\)`**：该页渲染器没配置这对定界符（见陷阱清单第 7 条）。
-4. **Markdown 残留**：`**粗体**`、`_斜体_`、段首的 `>` 引用记号。
-5. **KaTeX 解析失败回退**：`<span class="katex-error">`，读者看到的是红色源码而不是公式。
-6. **同一张图被两个不同标签引用**：按图片字节哈希比对，能直接抓出"公式图其实是一张论文图"
+1. **未配对的定界符**：该页 `delimiters` 里配置的 `$`、`\(`、`\[` 在某个文本节点里没配成对。
+2. **正文里的 LaTeX**：非数学文本里残留 `\xi`、`\frac`、`\|` 这类命令。
+3. **双反斜杠命令**（`\\bar`、`\\|`、`\\mathrm`、`\\frac`）：单个反斜杠被写成两个。**矩阵 /
+   数组 / `cases` / `aligned` 环境里 `\\` 是换行符，属正常**，检查器已按环境排除；其余位置
+   一律算错，因为它渲染成"换行 + 字面量"而不是命令。
+4. **正文里的上下标**：非数学文本里残留 `_{…}` / `^{…}`（公式被切断后最常见的残骸）。
+5. **定界符 / 公式被行内标签切断**：把相邻两个文本节点**带着边界标记拼起来再匹配一遍**，
+   若匹配结果与逐节点匹配不同，说明这段公式只有在标签消失时才能渲染——**读者实际看到的是
+   碎片**。
+6. **不可能成形的数学 span**：花括号 / 圆括号 / 方括号不配对，或 `\left` 没有 `\right`。
+   这类 span 一定是从一条更长公式里截出来的。
+7. **Markdown 残留**：`**粗体**`、`_斜体_`、段首的 `>` 引用记号。
+8. **KaTeX 解析失败回退**：`<span class="katex-error">`，读者看到的是红色源码而不是公式。
+9. **同一张图被两个不同标签引用**：按图片字节哈希比对，能直接抓出"公式图其实是一张论文图"
    这类图注错位。
-7. **外链与非内嵌图片**：自包含被破坏。
+10. **外链与非内嵌图片**：自包含被破坏。
 
-**判"渲染了没有"必须按该页自己的配置来**：用 `renderMathInElement` 的 `delimiters` 决定哪些
-定界符真的会被处理；页面上写了 `\(...\)` 不等于会渲染。没有客户端渲染的预渲染页面（只有
-`katex-html` 或 `annotation`）则**任何**定界符都不会被处理。
+**两条必须记住的边界**：
+
+- **判"渲染了没有"必须按该页自己的配置来**：用 `renderMathInElement` 的 `delimiters` 决定哪些
+  定界符真的会被处理；页面上写了 `\(...\)` 不等于会渲染。没有客户端渲染的预渲染页面（只有
+  `katex-html` 或 `annotation`）则**任何**定界符都不会被处理。
+- **检查器的盲区不是覆盖率**。反面教材（旧版 `check_source_leaks.py` 就是这么写的）：
+  ① 在配了 `$` 的页面上把 `$…$` **整段遮掉**再数剩下的源码——那么"公式体里写错了什么"
+  永远查不到，上面的第 3、6 项必然漏报；② 把可见文本**跨标签直接拼接**再匹配定界符——
+  拼接本身就把标签边界抹平了，第 5 项必然漏报。新版按**页面自己的 auto-render 算法逐文本节点**
+  匹配定界符（`splitAtDelimiters` / `findEndOfMath` 的等价实现，已用交付件内嵌的 bundle 逐节点
+  比对验证），并**逐条读公式体**做体检。**换检查器/改检查器之后，必须拿"已确认有缺陷的旧版本"
+  回归一遍**：如果新旧版本对同一份坏文件都报通过，说明新检查项根本没生效。
 
 ### 5.6 翻译核对
 
@@ -207,14 +235,15 @@ python scripts/md_self_contained.py translation.md --out translation_one_file.md
 ```bash
 python scripts/build_html.py translation.md out.html     # KaTeX 预渲染 + 字体/图片 base64 + 编号防重叠
 python scripts/check_all_html.py out.html                # 全量复查：重叠/图片/渲染残留
-python scripts/check_source_leaks.py out.html            # 源码级复查：可见 LaTeX / Markdown 残留 / KaTeX 报错 / 图字节重复
+python scripts/check_source_leaks.py out.html            # 源码级复查：未配对定界符 / 正文 LaTeX / 双反斜杠 / 正文上下标 / 标签切断公式 / 畸形 span / Markdown 残留 / KaTeX 报错 / 图字节重复
 python scripts/headless_check.py out.html                # 单文件快速体检
 ```
 
-**构建 HTML 时必须一并确认的两件事**（第 5.5 步的工具会替你查）：
+**构建 HTML 时必须一并确认的三件事**（第 5.5 步的工具会替你查）：
 
 - **定界符一致性**：`build_html.py` 走 KaTeX 预渲染时，页面文本里若还留着 `\(...\)`（例如译文素材混用了两种行内写法），必须**全量转成 `$...$` 再构建**，否则预渲染器与浏览器都不会处理它们，读者直接看到源码。
-- **不要把定界符与公式体拆到不同块级元素里**：`<p>$$</p><p>公式</p><p>$$</p>` 这种写法，auto-render 在**单个文本节点内**匹配定界符，跨元素一定匹配不到；显示公式必须写成同一个 `<p>$$…$$</p>`。
+- **不要把定界符与公式体拆到不同块级元素里**：`<p>$$</p><p>公式</p><p>$$</p>` 这种写法，auto-render 在**单个文本节点内**匹配定界符，跨元素一定匹配不到；显示公式必须写成同一个 `<p>$$…$$</p>`。同理，行内公式不要跨 `<em>`/`<strong>`/`<sup>` 等行内标签断开。
+- **写进 HTML 的 LaTeX 只允许单反斜杠**：`\|\bar{v}_L\|` 是对的，`$\\|\\bar{v}_L\\|$` 是错的——后者每个反斜杠都多了一个。KaTeX 对后者**不报错**，只是渲染成"换行 + 字面量 bar + 单竖线"。原因是这类字符串要穿过 Shell → Python → HTML/JS 多层转义，任何一层多写一个 `\` 都会静默出错。**所以写完后必须读回文件按字符确认**（见 [reference/verification-guide.md](reference/verification-guide.md) 陷阱清单第 21 条），并做一次渲染目视比对（5.1 第 4 条）。
 
 HTML 的修复与归档工具：
 
@@ -231,7 +260,7 @@ python scripts/sync_zotero.py out.html --zotero-storage <ZOTERO_STORAGE> --key <
 
 - 审查方法论与命令清单：[reference/verification-guide.md](reference/verification-guide.md)
 - 提取：`scripts/extract_pdf.py`（文本+页面图+图片对象）、`scripts/extract_figs_by_caption.py`（按图注裁剪）、`scripts/ocr_formula.py`（公式截图 OCR 辅助）
-- 核对：`scripts/zoom_formula.py`（公式高清渲染）、`scripts/verify_translation.py`（文档结构验证）、`scripts/verify_katex_md.js`（公式语法验证）、`scripts/check_source_leaks.py`（交付 HTML 源码级复查）
+- 核对：`scripts/zoom_formula.py`（公式高清渲染）、`scripts/verify_translation.py`（文档结构验证）、`scripts/verify_katex_md.js`（公式语法验证）、`scripts/check_source_leaks.py`（交付 HTML 源码级复查，`--selftest` 可自检）
 - HTML：`scripts/md_self_contained.py`（图片内嵌 Markdown）、`scripts/render_body.js`（Markdown→KaTeX 静态 HTML）、`scripts/md_to_offline_html.js`（Node 一键自包含 HTML）、`scripts/build_html.py`（Python 一键构建）、`scripts/vendor_katex.py`（导出 KaTeX 离线资源）
 - 检查：`scripts/check_source_leaks.py`、`scripts/fix_overlap.py`、`scripts/fix_wide.py`、`scripts/check_img_order.py`、`scripts/check_img_dims.py`、`scripts/headless_check.py`、`scripts/check_loaded_all.py`、`scripts/check_all_html.py`
 - 归档：`scripts/sync_zotero.py`
