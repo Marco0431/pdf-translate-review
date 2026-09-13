@@ -21,6 +21,7 @@ description: >-
 2. **公式严格**：所有公式保留原文编号；文本公式用 `$...$`（行内）、`$$...$$`（块级），**不用 `\(...\)` / `\[...\]`**（部分 Markdown 预览器不识别，会显示为源码）。
 3. **图片按图注配对**：图片必须按论文 `Fig.` 图注定位提取，内容与编号双重核对；不得按 PDF 内嵌对象顺序取图。
 4. **审查必做**：交付前逐字核对公式、翻译与图片，反复检查，不允许"看起来对"。
+5. **交付件不得露出源码**：最终 HTML 里读者能看到的只能有译文、公式排版与图片。原始 LaTeX（`\xi`、`\frac`、`\|`）、未渲染的定界符（`$`、`\(`）、Markdown 记号（`**粗体**`、`_斜体_`、段首 `>`）与 KaTeX 解析失败回退块都算**交付缺陷**，不是"渲染问题"。这类缺陷在 Markdown 阶段查不出来，必须对最终 HTML 逐项查（见 5.5）。
 
 ---
 
@@ -119,7 +120,7 @@ python scripts/extract_pdf.py paper.pdf --out out/
    - **分数 vs 加号**：确认是否存在分数线、分子分母结构，避免把"加号 + 列向量"误读成分数，也避免把分数误读成并列项；
    - **函数自变量**：确认自变量本身是否带导数点（形如 `D(q)` 与 `D(\dot{q})` 是不同函数）；
    - **括号范围**：`[(I-a)b - ac]` 与 `[(I-a)(b-c)]` 两种 LaTeX 语法都合法但语义不同——必须逐项确认**减号两侧各被谁相乘**。发现括号范围可疑时，用该公式**下游推导式**反推验证：把两种结构分别代入后续推导，能推出原文下一式的才是正确结构；
-   - **多行共享编号**：多行矩阵 / 方程组共用一个编号时，确认共享关系与原文一致，不得拆成 `12a/12b`；
+   - **多行共享编号**：多行矩阵 / 方程组共用一个编号时，确认共享关系与原文一致，不得拆成 `12a/12b`；反过来，**若原文自身就用子编号**（如 `(28a)`–`(28d)`、`(42a)/(42b)`、`(57a)`–`(57g)`），必须照抄，不要"合并"成 `(28)`。**编号只在共享块的末行出现一次**——每行都写 `\tag{N}` 会让读者看到同一个编号重复渲染（实战中出现过 4 组）；用 `\text{(28a)}` 表示子编号时，只靠 `\\tag\{(\d+)\}` 统计会漏计，必须同时扫 `\text{(…)}`；
    - **跨页公式组**：多式共用编号的公式组可能跨页（编号标注在末式），判定"原文没有此式"必须把**编号所在页与其前一页的两栏全部**渲染核对后才能下结论；
    - **不补写**：原文未给出的公式（如未显式写出的矩阵）不得补写；确有合理补充必须加 `> 注释：原文此处未给出…，此为译者补充。`。
 4. 发现错误后**同步修改三处**：译文正文、精读章节、HTML 内嵌公式源（`<annotation encoding="application/x-tex">`）——同一公式常在多处出现，必须一致。
@@ -131,11 +132,12 @@ python scripts/extract_pdf.py paper.pdf --out out/
 3. 逐一比对：数量相等、编号连续、图 N 标题语义与 `Fig. N` 图注一致；
 4. 用 Read 逐张目视确认图片内容（而非只看文件名）；
 5. 检查图片在文档中的出现顺序与图注编号顺序一致；
-6. 同一图片文件不得被两次引用表示两张不同图（组合图要按边界拆成两幅）；
+6. 同一图片文件不得被两次引用表示两张不同图（组合图要按边界拆成两幅）；**交付 HTML 时直接按图片字节哈希比对**——实战中出现过"公式 10 / 公式 12"两张图与"图 4 / 图 5"字节完全相同的情况，即两条公式从未显示过。一旦发现，要用原文 PDF 重新裁出真正的公式插入，而不是删掉重复那张；
 7. 自动化辅助：
    ```bash
    python scripts/check_img_order.py out.html --expected 1,2,3,4,5
    python scripts/check_img_dims.py out.html
+   python scripts/check_source_leaks.py out.html      # 含图片字节重复检测
    ```
 
 ### 5.3 表格核对
@@ -155,13 +157,40 @@ python scripts/verify_translation.py translation.md \
 node scripts/verify_katex_md.js translation.md
 ```
 
-### 5.5 翻译核对
+### 5.5 HTML 交付件源码级复查（产出 ⑥-B 离线 HTML 时必跑）
+
+**为什么单列一步**：3～5.4 各步查的是译文内容，5.6 查的是渲染是否重叠。但交付的 HTML 里
+还可能出现"内容都对、读者却看到源代码"的情况，而且**在 Markdown 阶段完全查不出来**——
+Markdown 里 `$...$` 就是数学，转成 HTML 后能不能渲染取决于页面自己的定界符配置。实战中一次
+归档 27 份 HTML，有 12 份栽在这一类问题上，其中 7 份共 1110 处行内公式以源码形式显示。
+
+```bash
+python scripts/check_source_leaks.py out.html
+python scripts/check_source_leaks.py --dir out/            # 递归
+```
+
+逐项判死（任一不为零即不合格）：
+
+1. **可见原始 LaTeX**：读者能看到的文本里不该有 `\xi`、`\frac`、`\|` 这类命令。
+2. **可见残留 `$`**：公式没被渲染，或定界符配对失败。
+3. **可见 `\(` `\)`**：该页渲染器没配置这对定界符（见陷阱清单第 7 条）。
+4. **Markdown 残留**：`**粗体**`、`_斜体_`、段首的 `>` 引用记号。
+5. **KaTeX 解析失败回退**：`<span class="katex-error">`，读者看到的是红色源码而不是公式。
+6. **同一张图被两个不同标签引用**：按图片字节哈希比对，能直接抓出"公式图其实是一张论文图"
+   这类图注错位。
+7. **外链与非内嵌图片**：自包含被破坏。
+
+**判"渲染了没有"必须按该页自己的配置来**：用 `renderMathInElement` 的 `delimiters` 决定哪些
+定界符真的会被处理；页面上写了 `\(...\)` 不等于会渲染。没有客户端渲染的预渲染页面（只有
+`katex-html` 或 `annotation`）则**任何**定界符都不会被处理。
+
+### 5.6 翻译核对
 
 逐段比对 PDF 文本层与译文：数字、单位、参数、实验条件、引文编号、专有名词。
 
-### 5.6 反复检查
+### 5.7 反复检查
 
-修正后重跑 5.4 与 5.2；若要求"反复检查"，至少三轮：初查 → 修正 → 复查 → 再修正 → 终查。每一轮都重跑自动验证，直到 0 问题。
+修正后重跑 5.4 与 5.2（产出 HTML 时连同 5.5）；若要求"反复检查"，至少三轮：初查 → 修正 → 复查 → 再修正 → 终查。每一轮都重跑自动验证，直到 0 问题。
 
 ## ⑥ 交付
 
@@ -178,8 +207,14 @@ python scripts/md_self_contained.py translation.md --out translation_one_file.md
 ```bash
 python scripts/build_html.py translation.md out.html     # KaTeX 预渲染 + 字体/图片 base64 + 编号防重叠
 python scripts/check_all_html.py out.html                # 全量复查：重叠/图片/渲染残留
+python scripts/check_source_leaks.py out.html            # 源码级复查：可见 LaTeX / Markdown 残留 / KaTeX 报错 / 图字节重复
 python scripts/headless_check.py out.html                # 单文件快速体检
 ```
+
+**构建 HTML 时必须一并确认的两件事**（第 5.5 步的工具会替你查）：
+
+- **定界符一致性**：`build_html.py` 走 KaTeX 预渲染时，页面文本里若还留着 `\(...\)`（例如译文素材混用了两种行内写法），必须**全量转成 `$...$` 再构建**，否则预渲染器与浏览器都不会处理它们，读者直接看到源码。
+- **不要把定界符与公式体拆到不同块级元素里**：`<p>$$</p><p>公式</p><p>$$</p>` 这种写法，auto-render 在**单个文本节点内**匹配定界符，跨元素一定匹配不到；显示公式必须写成同一个 `<p>$$…$$</p>`。
 
 HTML 的修复与归档工具：
 
@@ -196,7 +231,7 @@ python scripts/sync_zotero.py out.html --zotero-storage <ZOTERO_STORAGE> --key <
 
 - 审查方法论与命令清单：[reference/verification-guide.md](reference/verification-guide.md)
 - 提取：`scripts/extract_pdf.py`（文本+页面图+图片对象）、`scripts/extract_figs_by_caption.py`（按图注裁剪）、`scripts/ocr_formula.py`（公式截图 OCR 辅助）
-- 核对：`scripts/zoom_formula.py`（公式高清渲染）、`scripts/verify_translation.py`（文档结构验证）、`scripts/verify_katex_md.js`（公式语法验证）
+- 核对：`scripts/zoom_formula.py`（公式高清渲染）、`scripts/verify_translation.py`（文档结构验证）、`scripts/verify_katex_md.js`（公式语法验证）、`scripts/check_source_leaks.py`（交付 HTML 源码级复查）
 - HTML：`scripts/md_self_contained.py`（图片内嵌 Markdown）、`scripts/render_body.js`（Markdown→KaTeX 静态 HTML）、`scripts/md_to_offline_html.js`（Node 一键自包含 HTML）、`scripts/build_html.py`（Python 一键构建）、`scripts/vendor_katex.py`（导出 KaTeX 离线资源）
-- 检查：`scripts/fix_overlap.py`、`scripts/fix_wide.py`、`scripts/check_img_order.py`、`scripts/check_img_dims.py`、`scripts/headless_check.py`、`scripts/check_loaded_all.py`、`scripts/check_all_html.py`
+- 检查：`scripts/check_source_leaks.py`、`scripts/fix_overlap.py`、`scripts/fix_wide.py`、`scripts/check_img_order.py`、`scripts/check_img_dims.py`、`scripts/headless_check.py`、`scripts/check_loaded_all.py`、`scripts/check_all_html.py`
 - 归档：`scripts/sync_zotero.py`
