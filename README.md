@@ -78,6 +78,7 @@ pdf-translate-review/
     ├── check_loaded_all.py             # 检查：批量确认内嵌图片全部可解码
     ├── check_all_html.py               # 检查：批量全量复查（重叠 + 图片 + 渲染残留）
     ├── check_crop_fidelity.py          # 检查：内嵌图与原 PDF 逐张对位（保真 + 槽位编号）
+    ├── check_image_ghosts.py           # 检查：内嵌图“重影”（截图二次曝光）——墨迹记账判据
     ├── sync_zotero.py                  # 归档：把修好的 HTML 覆盖到 Zotero 附件存储
     └── vendor_katex.py                 # 部署：导出 KaTeX/markdown-it 离线资源到 vendor 目录
 ```
@@ -117,6 +118,7 @@ python scripts/check_all_html.py out.html
 python scripts/headless_check.py out.html          # 单文件快速体检
 python scripts/check_loaded_all.py --dir out/     # 批量图片解码检查
 python scripts/check_crop_fidelity.py --html out.html --pdf paper.pdf --name Proj --out fidelity/   # 内嵌图与原文逐张对位（交付 HTML 时必跑）
+python scripts/check_image_ghosts.py --html out.html --pdf paper.pdf --out ghosts/           # 内嵌图重影检查（交付 HTML 时必跑）
 
 # ③ 局部修复（幂等，可对已有 HTML 单独执行）
 python scripts/fix_overlap.py out.html            # 编号压公式
