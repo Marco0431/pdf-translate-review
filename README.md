@@ -1,6 +1,6 @@
 # pdf-translate-review
 
-把学术 PDF 论文翻译成**不含原文的中文图文文档**，完成**精读**与**逐字审查**，并可按需产出**离线自包含 HTML** 的完整工具链 + Agent Skill（`SKILL.md`，Cursor / Claude Code / Codex 等 Agent 通用）。
+把学术 PDF 论文翻译成**不含原文的中文图文文档**，完成**原译对照校对**与**逐字审查**，并可按需产出**离线自包含 HTML** 的完整工具链 + Agent Skill（`SKILL.md`，Cursor / Claude Code / Codex 等 Agent 通用）。
 
 ```
 PDF ──提取──> 文本基准 + 按图注裁剪的原图 + 页面渲染图
@@ -34,6 +34,20 @@ PDF ──提取──> 文本基准 + 按图注裁剪的原图 + 页面渲染�
 
 ## 安装
 
+### 批量翻译技能
+
+本仓库同时维护 [paper-translate-html](skills/paper-translate-html/SKILL.md)：批量翻译、按语境管理术语、原译对照校对、可恢复缓存及 Zotero 归档。`review` 指翻译质量校对；论文精读交给 `paper-reading`，默认不追加精读或学术评价。
+
+批量技能位于 `skills/paper-translate-html/`，可直接指定该 SKILL.md 使用；也可将该目录安装到用户 skills 目录，与 pdf-translate-review 并列。两个技能共用本仓库的 PDF/HTML 工具。直接在 bundled 目录执行时，共享脚本路径为 `../../scripts/`；并列安装时为 `../pdf-translate-review/scripts/`。只复制技能文件，不复制其他仓库的 .git 或私人术语库。
+
+```bash
+python -m unittest discover -s skills/paper-translate-html/tests -v
+```
+
+提示默认紧凑序列化，plan 按预算将相邻完整段落组批；不截断来源证据、不跳过语义校对。参数与限制见 [效率说明](skills/paper-translate-html/references/efficiency.md)。
+
+### 单篇翻译技能
+
 ```bash
 # Cursor 用户级 skills 目录
 git clone https://github.com/Marco0431/pdf-translate-review.git ~/.cursor/skills/pdf-translate-review
@@ -55,7 +69,7 @@ npm install                                    # Markdown -> HTML 流水线（�
 
 ```
 pdf-translate-review/
-├── SKILL.md                            # Agent skill 入口：翻译 → 精读 → 审查 → 交付全流程
+├── SKILL.md                            # Agent skill 入口：翻译 → 对照校对 → 审查 → 交付全流程
 ├── reference/
 │   └── verification-guide.md           # 审查方法论、命令清单与公式陷阱清单
 ├── package.json                        # Node 依赖（katex / markdown-it / markdown-it-texmath）
@@ -85,7 +99,7 @@ pdf-translate-review/
 
 ## 两条产出流水线
 
-### 流水线 A：图文 Markdown（精读 + 翻译）
+### 流水线 A：图文 Markdown（翻译与校对）
 
 ```bash
 # ① 提取：文本基准 + 页面渲染图 + 内嵌图片（公式结构后续用渲染图核对）
@@ -95,7 +109,7 @@ python scripts/extract_pdf.py paper.pdf --out out/
 python scripts/extract_figs_by_caption.py paper.pdf --list
 python scripts/extract_figs_by_caption.py paper.pdf -o out/assets --dpi 300 --col-x 300
 
-# ③ 翻译 + 精读：产出 translation.md（引用 assets/figN.png）
+# ③ 翻译与校对：产出 translation.md（引用 assets/figN.png）
 
 # ④ 审查：结构验证 + 公式语法验证；公式用高清渲染图逐字复核
 python scripts/zoom_formula.py paper.pdf --page 4 --list --kw "eta" "J" "D"

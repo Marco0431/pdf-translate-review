@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "title": "Synthetic translation regression fixture; not a real paper",
+  "context": [
+    {"text": "此合成片段研究仿真中的控制策略；尚未确认真实机器人表现。", "evidence_ids": ["p1-b1", "p1-b2"]}
+  ],
+  "glossary": [
+    {"id": "control-policy", "source": "policy", "target": "策略", "sense": "控制决策规则", "unit_ids": ["p1-b1"], "status": "approved", "variants": []},
+    {"id": "safety-policy", "source": "policy", "target": "规定", "sense": "安全管理制度", "unit_ids": ["p2-b1"], "status": "approved", "variants": ["安全政策"]}
+  ],
+  "units": [
+    {"id": "p1-b1", "page": 1, "kind": "prose", "source": "The control policy may reduce tracking error by 12% in simulation, provided that sensor latency remains below 20 ms. [[CITE:r1]]"},
+    {"id": "p1-b2", "page": 1, "kind": "prose", "source": "This does not establish that the method improves performance on a real robot."},
+    {"id": "p1-fig1", "page": 1, "kind": "caption", "source": "[[IMG:fig1]] Figure 1. (a) Training; (b) evaluation. Error bars show standard deviation, not standard error."},
+    {"id": "p2-table1", "page": 2, "kind": "table", "source": "| Method | Success (%) |\n|---|---|\n| Baseline | 80.5 |\n| Ours | 82.0 |"},
+    {"id": "p2-b1", "page": 2, "kind": "prose", "source": "The laboratory safety policy requires supervision during every experiment."}
+  ]
+}

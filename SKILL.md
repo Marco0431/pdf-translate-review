@@ -2,18 +2,20 @@
 name: pdf-translate-review
 description: >-
   Translate an academic PDF paper into a faithful Chinese translation (without
-  the original English text), embed original figures, then critically read it and
+  the original English text), embed original figures, then
   rigorously verify the translation against the original PDF page by page.
   Optionally build a self-contained offline HTML (KaTeX pre-rendered, fonts and
   images embedded as data URIs). Use when the user asks to 翻译论文/PDF, translate
-  a paper, produce a Chinese translation of a paper, 精读论文, demands a
+  a paper, produce a Chinese translation of a paper, or demands a
   translation be checked for formula and text accuracy (审查/核对/逐字核对), or
   asks for an offline/self-contained HTML version (离线 HTML/自包含 HTML).
 ---
 
-# PDF 翻译 · 精读 · 审查
+# PDF 翻译 · 对照校对
 
-将学术 PDF 论文翻译为不含原文的中文图文文档，完成精读与逐字审查，并按需产出离线自包含 HTML。
+本技能的 review 是翻译校对，不是论文精读或学术审稿。默认不追加精读；仅精读/总结请求交给 paper-reading，学术审稿交给 paper-review。
+
+将学术 PDF 论文翻译为不含原文的中文图文文档，完成原译对照与逐字校对，并按需产出离线自包含 HTML。
 
 ## 核心原则
 
@@ -32,7 +34,7 @@ description: >-
 ① 准备  → 定位 PDF，建工作目录
 ② 提取  → 文本 + 按图注裁剪的图片 + 页面渲染图 + 表格清单
 ③ 翻译  → 逐节忠实翻译，公式保编号，表格全量转译
-④ 精读  → 结构 / 方法 / 公式 / 实验 / 点评
+④ 校对  → 原译对照 / 术语 / 数字 / 条件与论断强度
 ⑤ 审查  → 逐字核对公式、图片、表格、翻译；自动验证；反复检查
 ⑥ 交付  → 图文 Markdown；可选离线自包含 HTML
 ```
@@ -94,17 +96,9 @@ python scripts/extract_pdf.py paper.pdf --out out/
 - **表格**：每个表用 Markdown 表格完整转译，放在正文引用处附近。
 - **原文笔误**：忠实保留原文写法，并在下方加 `> 注释` 说明疑似笔误与理由，不擅自"修正"。
 
-## ④ 精读
+## ④ 原译对照校对
 
-在翻译之后追加"# 精读"部分：
-
-- **论文定位**：一句话概括贡献。
-- **要解决的问题**：背景、现有方法局限、核心痛点。
-- **方法/核心创新**：关键公式含义、设计动机、与现有方法对比。
-- **实验设计**：实验设置、关键结果、结果解读。
-- **局限与思考**：方法局限、未解决问题。
-
-精读中引用的公式编号必须与翻译部分一致。
+核对段落覆盖、术语词义、否定与条件、数字单位及论断强度。review 仅指译文校对；默认不做论文精读、价值评价或研究建议。明确要求精读时由 paper-reading 单独交付。
 
 ## ⑤ 审查（必做，逐字核对）
 
@@ -131,7 +125,7 @@ python scripts/extract_pdf.py paper.pdf --out out/
    - **判定方法**：无头浏览器加载页面后，把 `document.querySelectorAll('.katex')` 的可见文本（先移除 `.katex-mathml` 隐藏副本）导出成列表，与原文公式逐条比。实战就是这么发现"6 条公式、0 个错误、但 5 条数学是错的"。
    - 附带的同类陷阱：**`\mathrm`、`\left`、`\frac`、`\bar` 等命令被多写一个反斜杠后，命令名会退化成字面量字母**（`x_{\mathrm{sym,th}}` → `xmathrmsym,th`）。这类"命令变字母"的信号同样只能在渲染结果里看到。
 
-发现错误后**同步修改三处**：译文正文、精读章节、HTML 内嵌公式源（`<annotation encoding="application/x-tex">`）——同一公式常在多处出现，必须一致。
+发现错误后**同步修改对应位置**：译文正文及 HTML 内嵌公式源（`<annotation encoding="application/x-tex">`）——同一公式常在多处出现，必须一致。
 
 ### 5.2 图片-图注一致性核对（必做）
 
@@ -199,7 +193,7 @@ python scripts/check_image_ghosts.py --html out.html --pdf paper.pdf --out ghost
 # 结构兜底：编号齐全、$$/$ 配对、无 \( 残留、括号与环境配对、图片一一对应、关键式存在
 python scripts/verify_translation.py translation.md \
   --max-eq 38 --assets-dir assets --expect-imgs 15 \
-  --section "## 摘要" --section "# 精读" \
+  --section "## 摘要" \
   --key 'J_i^{-T}u_i' --check-english
 
 # 公式语法：逐条用 KaTeX 渲染，列出失败公式（真实语法错误，不是"看起来像"）
