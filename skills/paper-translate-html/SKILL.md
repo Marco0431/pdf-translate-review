@@ -12,6 +12,7 @@ description: >-
 
 ## 按需读取
 
+- 默认执行：读 [references/agent-flow.md](references/agent-flow.md)，使用 start/next/submit 自动推进全文准备、初译、校对、定点修正和风险复核；当前代理执行模型任务，用户无需管理中间文件。
 - 开始执行：读 [references/pipeline.md](references/pipeline.md)，包含提取、翻译、模型配置、断点续跑与实际命令。
 - 翻译正文前：读 [references/translation-quality.md](references/translation-quality.md)，建立全文上下文、按词义限定的术语库，执行原译文对照审校与最终版本核验。
 - 节省 token / 加速：读 [references/efficiency.md](references/efficiency.md)，使用完整证据下的紧凑提示与相邻段落批处理，质量优先，不跳过校对。
@@ -42,5 +43,7 @@ description: >-
 scripts/batch_state.py 仅管理本地块缓存，不调用模型、不上传文件、不代替语义审查。通过 --help 查看 init / put / get / summary。配置文件、PDF 或块原文变化时拒绝复用；写入使用原子替换，同一篇采用单写入者。具体调用见 pipeline 参考。
 
 scripts/translation_workbench.py 的 packet 组装初译/审校/润色材料，check 检查段落对齐、数字/术语疑点与审校版本。执行者完成翻译与语义判断；未经最终对照审校的译文不能因自动检查通过而交付。
+
+scripts/translation_flow.py 编排以上任务，保存中断恢复状态和原文证据，自动安排修正与高风险二次校对。它复用当前代理，不直接调用外部模型。text_reviewed 之后仍需图表和 HTML 验收；精读始终独立。
 
 修改技能后运行 skill-creator 的 quick_validate.py；修改缓存工具后运行 python -m unittest discover -s tests -v（以本技能目录为工作目录）。

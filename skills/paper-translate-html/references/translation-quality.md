@@ -2,6 +2,8 @@
 
 当前执行者负责理解与审校，`translation_workbench.py` 组装材料并检查对齐和版本。工具不调用模型，不凭正则证明准确性。可在主会话执行，也可将生成的 messages 交给已授权的批量模型。
 
+默认使用 [agent-flow.md](agent-flow.md) 中的状态机自动推进这些阶段。下文说明底层数据与校对要求，通常不需要代理手工编排每一步。
+
 本文件 review 仅指翻译对照校对，与 paper-reading（精读理解）和 paper-review（学术审稿）分开。内部上下文用于译文消歧，不自动变成精读交付件。
 
 ## 1. 论文上下文
@@ -15,6 +17,8 @@
 ## 2. 语境术语库
 
 `glossary.json` 每项含 `id/source/target/sense/unit_ids/status/variants`。`sense` 说明本篇词义，`unit_ids` 限定适用范围，`status` 为 approved 或 candidate。当前执行者依据原文消歧后可批准本篇术语，无需逐词询问用户；用户已有明确译法优先。
+
+默认 flow 进一步要求 domain、definition、example，并验证 example 为适用单元中的原文；旧 workbench 文件可继续使用较小的兼容格式。flow 可导入用户确认的跨论文术语，仍需按本篇词义匹配。
 
 同一 source 可以有多个 sense 和不同 target，例如控制策略的 policy 与安全规定的 policy。批准前检查范围重叠处是否冲突。缩写首次出现给中文全称并保留必要缩写，之后一致地简写；variants 只列经确认的等价表达，不用于掩盖词义变化。
 

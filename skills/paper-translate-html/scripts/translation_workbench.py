@@ -22,6 +22,15 @@ KIND_CHECKS = {
     "algorithm": {"variables_control_flow"}, "theorem": {"conditions_quantifiers"},
     "reference": {"bibliographic_identity"},
 }
+KIND_INSTRUCTIONS = {
+    "heading": "保留标题层级和原编号，不将标题扩写成总结。",
+    "prose": "保留主语、跨句指代、条件和否定；长句可在本单元内调整中文语序。",
+    "caption": "保留图号与每个子图标签的对应关系；完整翻译误差条、统计量和实验条件。",
+    "table": "逐单元格翻译文字，保持行列对应、数字、单位、脚注及显著性标记；不将表格概括成段落。",
+    "algorithm": "翻译说明和注释，保留变量名、代码、行号及控制流程；不得改写算法逻辑。",
+    "theorem": "严格保留假设、量词、条件、结论与证明关系；不补充作者没有给出的证明步骤。",
+    "reference": "保留作者、年份、题名、刊物、DOI和引用编号等检索身份；不强制把书目全部译成中文。",
+}
 # A comparison hint, not a language-independent numeric equivalence checker.
 NUMBER = re.compile(r"(?<![\w.])[+\-−]?\d+(?:,\d{3})*(?:\.\d+)?(?:[eE][+\-−]?\d+)?(?:\s*[%％])?")
 COMMON = (
@@ -195,6 +204,7 @@ def packet(doc, stage, translations=None, selected=None, pretty=False):
     data = {"document_sha256": fingerprint(doc), "context": doc["context"],
             "glossary": [x for x in doc["glossary"] if x["status"] == "approved" and set(x["unit_ids"]) & set(selected)],
             "selected_units": units}
+    data["content_type_instructions"] = {kind: KIND_INSTRUCTIONS[kind] for kind in sorted({x["kind"] for x in units})}
     neighbor_ids = set()
     for uid in selected:
         index = ids.index(uid)

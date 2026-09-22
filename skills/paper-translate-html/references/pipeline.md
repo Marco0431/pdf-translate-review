@@ -20,6 +20,8 @@
 
 ## 分块、翻译和对照校对
 
+默认用 [agent-flow.md](agent-flow.md) 的 flow 执行循环。准备 source-units.json 后由 start/next/submit 安排分析、术语、初译、校对、修正及风险复核；下面的单步命令保留用于调试与兼容已有流程。
+
 先执行 [translation-quality.md](translation-quality.md) 的全文上下文、语境术语和三阶段翻译流程。将来源单元与上下文/术语冻结为 document.json；每段以源 ID 关联译文和审校记录，全文最终 check 通过后才组装 Markdown。自动结构检查不替代语义审校。
 
 按标题/段落边界切块，尽量不拆公式、表格、算法或图注。根据实际 tokenizer 或保守 token 估计保留输出余量，不把固定字符数当成模型上下文保证。邻块提供只读上下文，不重复输出重叠内容。

@@ -46,6 +46,8 @@ python -m unittest discover -s skills/paper-translate-html/tests -v
 
 提示默认紧凑序列化，plan 按预算将相邻完整段落组批；不截断来源证据、不跳过语义校对。参数与限制见 [效率说明](skills/paper-translate-html/references/efficiency.md)。
 
+默认使用 [译准执行流程](skills/paper-translate-html/references/agent-flow.md)：当前代理按状态机完成全文准备、语境术语、初译、原译校对、定点修正和风险复核。支持中断续跑与逐字证据检查，不要求额外 API 密钥；模型任务仍由当前代理执行。文本流程通过后继续 PDF 图表及 HTML 视觉验收，不能把文本通过当作整篇交付完成。
+
 ### 单篇翻译技能
 
 ```bash
