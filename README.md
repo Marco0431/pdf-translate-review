@@ -1,6 +1,42 @@
 # pdf-translate-review
 
-把学术 PDF 论文翻译成**不含原文的中文图文文档**，完成**原译对照校对**与**逐字审查**，并可按需产出**离线自包含 HTML** 的完整工具链 + Agent Skill（`SKILL.md`，Cursor / Claude Code / Codex 等 Agent 通用）。
+把学术 PDF 论文翻译成**保留原图、公式与表格的中文文档**，对照原文校对，再按需生成可离线阅读的单文件 HTML。包含 Agent Skills 与本地 Python / Node.js 工具，面向需要完整译文的论文读者。
+
+**English:** Agent skills and local tools for translating academic PDFs into Chinese Markdown or self-contained offline HTML, with original figures, equation verification, translation review, resumable batch workflows, and optional Zotero archiving. Translation is performed by the agent; the scripts handle extraction, checks, state, and rendering.
+
+[安装](#安装) · [使用示例](#使用示例) · [单篇技能](SKILL.md) · [批量技能](skills/paper-translate-html/SKILL.md) · [文档索引 / llms.txt](llms.txt)
+
+## 从这里开始
+
+| 你想做什么 | 入口 | 交付内容 |
+|---|---|---|
+| 翻译一篇论文，并逐项核对公式、图表 | [pdf-translate-review](SKILL.md) | 中文图文 Markdown；可选离线 HTML |
+| 批量翻译、续跑失败任务或归档到 Zotero | [paper-translate-html](skills/paper-translate-html/SKILL.md) | 每篇译文、来源映射、校对与归档状态 |
+| 已有译文，检查公式或生成离线文件 | [两条产出流水线](#两条产出流水线) | 结构/语法检查与 HTML 构建工具 |
+
+需要支持 `SKILL.md` 的代理环境及下方列出的本地依赖。`review` 指**译文与原文对照校对**；这些脚本不独立调用翻译模型，也不能用自动检查代替原文与页面的人工/代理复核。
+
+## 使用示例
+
+安装后，把本地 PDF 路径交给代理，例如：
+
+```text
+使用 pdf-translate-review 翻译 ./paper.pdf，输出到 ./out/。
+保留全部章节、原图、公式编号和表格，只输出中文译文。
+逐项对照原文校对，并生成离线自包含 HTML；报告未通过或未完成的检查。
+```
+
+`paper.pdf` 是你提供的输入文件，仓库未附带示例论文或已完成的论文译稿。以下命令对应现有脚本，先提取资料；**翻译与校对由代理完成**后，再构建 HTML：
+
+```bash
+python scripts/extract_pdf.py paper.pdf --out out/
+# 按 SKILL.md 完成翻译、配图和原译对照，将译文保存为 out/translation.md
+python scripts/build_html.py out/translation.md out/translation.html
+```
+
+HTML 构建成功后仍需执行下方[验收流程](#流水线-b离线自包含-html)，包括图片保真、公式渲染与原文核对。无需 PDF 的小型示例可查看现有[翻译回归样本](skills/paper-translate-html/tests/fixtures/translation-case.json)及[对照译文](skills/paper-translate-html/tests/fixtures/translation-good.json)；它们是明确标注的合成测试材料，不是论文翻译效果展示。
+
+## 工作流
 
 ```
 PDF ──提取──> 文本基准 + 按图注裁剪的原图 + 页面渲染图

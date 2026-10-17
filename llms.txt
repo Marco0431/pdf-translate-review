@@ -1,0 +1,28 @@
+# pdf-translate-review
+
+> Agent skills and local Python / Node.js tools for translating academic PDF papers into Chinese Markdown and self-contained offline HTML, with source-aligned translation review and checks for equations, figures, and tables.
+
+Canonical repository: https://github.com/Marco0431/pdf-translate-review
+
+The agent performs translation and semantic review. Scripts provide PDF extraction, figure cropping, formula and structure checks, offline HTML rendering, resumable workflow state, and optional Zotero attachment handling. Automated checks do not establish translation accuracy or complete visual verification. "Review" means translation review, not academic peer review. Documentation is primarily in Chinese. The repository is MIT-licensed.
+
+## Start here
+
+- [README and installation](https://github.com/Marco0431/pdf-translate-review/blob/main/README.md): Overview, dependencies, usage examples, and Markdown / HTML pipelines.
+- [Single-paper skill](https://github.com/Marco0431/pdf-translate-review/blob/main/SKILL.md): Full translation, source comparison, equation and figure verification, and delivery workflow.
+- [Batch translation skill](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/SKILL.md): Batch processing, resumable state, quality status, and optional Zotero archiving.
+
+## Workflow references
+
+- [Verification guide](https://github.com/Marco0431/pdf-translate-review/blob/main/reference/verification-guide.md): Formula inspection, figure checks, and review commands.
+- [Agent execution flow](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/references/agent-flow.md): Preparation, translation, source-aligned review, correction, and risk review.
+- [Translation quality](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/references/translation-quality.md): Source evidence, terminology, and final-version verification.
+- [HTML quality checks](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/references/quality.md): Delivery criteria and remaining visual checks.
+- [Zotero archiving](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/references/zotero.md): Deduplication, attachment import, and read-back checks.
+
+## Implementation and examples
+
+- [Scripts](https://github.com/Marco0431/pdf-translate-review/tree/main/scripts): Extraction, verification, HTML building, and attachment utilities.
+- [Synthetic translation fixture](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/tests/fixtures/translation-case.json): Small regression input, explicitly not a real paper.
+- [Matching translation fixture](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/tests/fixtures/translation-good.json): Translation data used by the regression tests, not a published paper translation.
+- [License](https://github.com/Marco0431/pdf-translate-review/blob/main/LICENSE): MIT license.
