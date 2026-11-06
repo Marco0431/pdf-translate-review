@@ -1,10 +1,12 @@
+[English quick start](README.en.md) · **简体中文**
+
 # pdf-translate-review
 
 把学术 PDF 论文翻译成**保留原图、公式与表格的中文文档**，对照原文校对，再按需生成可离线阅读的单文件 HTML。包含 Agent Skills 与本地 Python / Node.js 工具，面向需要完整译文的论文读者。
 
 **English:** Agent skills and local tools for translating academic PDFs into Chinese Markdown or self-contained offline HTML, with original figures, equation verification, translation review, resumable batch workflows, and optional Zotero archiving. Translation is performed by the agent; the scripts handle extraction, checks, state, and rendering.
 
-[安装](#安装) · [使用示例](#使用示例) · [单篇技能](SKILL.md) · [批量技能](skills/paper-translate-html/SKILL.md) · [文档索引 / llms.txt](llms.txt)
+[安装](#安装) · [无需论文的试跑](#无需论文的试跑) · [使用示例](#使用示例) · [单篇技能](SKILL.md) · [批量技能](skills/paper-translate-html/SKILL.md) · [反馈](#问题反馈与贡献)
 
 ## 从这里开始
 
@@ -15,6 +17,22 @@
 | 已有译文，检查公式或生成离线文件 | [两条产出流水线](#两条产出流水线) | 结构/语法检查与 HTML 构建工具 |
 
 需要支持 `SKILL.md` 的代理环境及下方列出的本地依赖。`review` 指**译文与原文对照校对**；这些脚本不独立调用翻译模型，也不能用自动检查代替原文与页面的人工/代理复核。
+
+如果你想在 Zotero 阅读时选中段落即时追问，可另看 [AskGPT](https://github.com/Marco0431/askgpt-zotero)；本仓库面向完整译稿的制作与校对，是独立的技能工作流。
+
+## 无需论文的试跑
+
+先用仓库内的合成样本体验“原文 + 译文 + 术语 → 校对材料”。只需要 Git 和 Python（测试使用 Python 3.12），无需 PDF、模型账户或第三方 Python 包。以下命令在克隆后的仓库根目录执行：
+
+```sh
+git clone https://github.com/Marco0431/pdf-translate-review.git
+cd pdf-translate-review
+python skills/paper-translate-html/scripts/translation_workbench.py packet --stage review --document skills/paper-translate-html/tests/fixtures/translation-case.json --translations skills/paper-translate-html/tests/fixtures/translation-good.json --out review-demo.json
+```
+
+成功后会生成 `review-demo.json`，其中包含 5 个来源片段及对应译文。样本特意把同一个英文词 `policy` 分别译为控制“策略”和安全“规定”，并保留仿真条件与真实机器人表现尚未确认的限制；这是校对材料的演示，**没有调用模型或完成校对**。生成文件可直接用文本编辑器查看，用完可删除。
+
+准备处理自己的 PDF 时，继续下方安装与使用示例；整个流程的模型执行由你的代理环境负责，账户费用和论文数据处理方式取决于所用代理及模型服务。离线 HTML 指交付文件可离线阅读，不代表模型翻译过程离线运行。
 
 ## 使用示例
 
@@ -89,9 +107,12 @@ python -m unittest discover -s skills/paper-translate-html/tests -v
 ```bash
 # Cursor 用户级 skills 目录
 git clone https://github.com/Marco0431/pdf-translate-review.git ~/.cursor/skills/pdf-translate-review
+cd ~/.cursor/skills/pdf-translate-review
 ```
 
 其他 Agent：把仓库目录放入对应的 skills 路径即可，核心是 `SKILL.md`。
+
+如果已经按上方试跑命令克隆过仓库，可直接使用该目录的 `SKILL.md`，或将完整仓库放入代理的技能目录；无需重复克隆。下面的依赖命令都应在含 `package.json` 的仓库根目录运行。
 
 依赖：
 
@@ -199,4 +220,10 @@ PDF 文本层对公式极不可靠：公式常是矢量/图片对象，抽取时
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
+## 问题反馈与贡献
+
+[报告问题](https://github.com/Marco0431/pdf-translate-review/issues/new?template=bug_report.md)时，请提供失败的命令、操作系统、Python / Node.js 版本、预期结果和报错。公式或图片问题请附上页码及可公开的最小片段；不要上传未经授权的整篇论文、私人 Zotero 数据或凭据。
+
+欢迎提供可公开复现的图表边界案例、术语歧义案例和安装说明修正。改动批量校对工具时可运行 `python -m unittest discover -s skills/paper-translate-html/tests -v`。更多入口见 [文档索引](llms.txt)。
