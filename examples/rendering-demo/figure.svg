@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="116" viewBox="0 0 700 116" role="img" aria-label="Synthetic motion diagram: current position advances by one time step">
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#23796e"/></marker></defs>
+  <rect x="1" y="1" width="698" height="114" rx="10" fill="#f1f7f7" stroke="#d6e6e5"/>
+  <path d="M170 58H520" stroke="#23796e" stroke-width="3" marker-end="url(#arrow)"/>
+  <circle cx="140" cy="58" r="18" fill="#23796e"/>
+  <circle cx="560" cy="58" r="18" fill="#5a7fbe"/>
+  <g fill="#21435c" font-family="sans-serif" text-anchor="middle">
+    <text x="140" y="99" font-size="15">Current position</text>
+    <text x="350" y="35" font-size="15">One time step</text>
+    <text x="560" y="99" font-size="15">Next position</text>
+  </g>
+</svg>
