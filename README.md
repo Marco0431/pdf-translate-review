@@ -8,6 +8,16 @@
 
 [安装](#安装) · [无需论文的试跑](#无需论文的试跑) · [使用示例](#使用示例) · [单篇技能](SKILL.md) · [批量技能](skills/paper-translate-html/SKILL.md) · [反馈](#问题反馈与贡献)
 
+## 看看输出
+
+下面是仓库现有 HTML 构建脚本生成的合成示例，展示段落、公式、图和表格的排版；文字与示意图均为演示材料，不是完整论文的模型翻译效果。
+
+![合成 Markdown 样例经现有构建脚本生成离线 HTML 的步骤演示](docs/media/pdf-workflow.gif)
+
+<a href="docs/media/pdf-render-overview.jpg"><img src="docs/media/pdf-render-overview.jpg" width="360" alt="实际 HTML 构建结果：中文段落、KaTeX 公式、示意图与表格" /></a>
+
+[查看静态全图](docs/media/pdf-render-overview.jpg) · [样例与复现命令](examples/rendering-demo/README.md)。渲染成功与原译对照校对是两个独立环节。
+
 ## 从这里开始
 
 | 你想做什么 | 入口 | 交付内容 |

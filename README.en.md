@@ -6,6 +6,16 @@ Turn an academic PDF into a Chinese translation with original figures, tables, a
 
 [Try a sample](#try-without-a-paper-or-model-account) · [Translate a paper](#translate-your-first-paper) · [Report a problem](https://github.com/Marco0431/pdf-translate-review/issues/new?template=bug_report.md) · [MIT license](LICENSE)
 
+## See the output
+
+This synthetic sample was rendered by the repository's existing HTML build script. It shows a paragraph, equation, diagram, and table. The text and diagram were created for the demo; this is not a full-paper model translation benchmark.
+
+![Step-by-step demonstration of the existing Markdown-to-HTML build using a synthetic sample](docs/media/pdf-workflow.gif)
+
+<a href="docs/media/pdf-render-overview.jpg"><img src="docs/media/pdf-render-overview.jpg" width="360" alt="Actual HTML build output with Chinese text, a KaTeX equation, a diagram, and a table" /></a>
+
+[Full-size still image](docs/media/pdf-render-overview.jpg) · [Sample and reproduction commands](examples/rendering-demo/README.md). Successful rendering does not establish translation accuracy or complete source-aligned review.
+
 ## Choose an entry point
 
 | Goal | Start here |
