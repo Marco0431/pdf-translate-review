@@ -9,6 +9,7 @@ The agent performs translation and semantic review. Scripts provide PDF extracti
 ## Start here
 
 - [README and installation](https://github.com/Marco0431/pdf-translate-review/blob/main/README.md): Overview, dependencies, usage examples, and Markdown / HTML pipelines.
+- [English quick start](https://github.com/Marco0431/pdf-translate-review/blob/main/README.en.md): Dependency-free sample, first-paper setup, troubleshooting, and feedback.
 - [Single-paper skill](https://github.com/Marco0431/pdf-translate-review/blob/main/SKILL.md): Full translation, source comparison, equation and figure verification, and delivery workflow.
 - [Batch translation skill](https://github.com/Marco0431/pdf-translate-review/blob/main/skills/paper-translate-html/SKILL.md): Batch processing, resumable state, quality status, and optional Zotero archiving.
 
